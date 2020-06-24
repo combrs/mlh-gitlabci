@@ -1,0 +1,12 @@
+---
+somebase:
+  fbddir: /mlhdev
+  log_dir: /tmp/distribs/logs
+  work_dir: /tmp/installer
+  distrib_dir: /tmp/distribs
+  installer: /tmp/installer/builder/FBDloader.pl
+  user: somecred
+  passw: somecred
+
+ansible_ssh_user: somecred
+ansible_ssh_pass: somecred

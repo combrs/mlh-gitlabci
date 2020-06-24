@@ -1,0 +1,9 @@
+---
+somebase:
+  user: somecred
+  passw: somecred
+
+nexus:
+  repo_url: http://10.203.64.55/repository/somebase
+  installer_path: /temp/builder.tar
+  builder_path: http://nexus/repository/somebase/stbuilder/StBuilder.jar

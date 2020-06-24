@@ -1,0 +1,77 @@
+---
+- name: Installation Block with touch deploy_result, run a deploy, handle, save result
+  block:
+     - set_fact:
+         host2: "{{ inventory_hostname.split('.')[-1] }}"
+     - name: Show last octet for target host ip
+       debug:
+         msg: "last octet for target host ip is: {{ host2 }}"
+     - name: touch deploy result file if not created
+       file:
+         path: "../deploy_result-{{ commit }}.txt"
+         state: touch
+       delegate_to: localhost
+     - name: Unarchive and Install 
+       include_tasks: deploy.yml
+     - name: Get success logs from install/delete distrib folder
+       include_tasks: getlogs.yml 
+     - name: save positive result
+       lineinfile:
+         line: "{{ somebase.fbddir}}-{{ inventory_hostname }}-{{ host }}-deploy SUCCESS"
+         dest: "../deploy_result-{{ commit }}.txt"
+         insertafter: EOF
+       delegate_to: localhost
+  rescue:
+    - name: touch ansible result file if not created
+      file:
+        path: "../ansible_result-{{ commit }}.txt"
+        state: touch
+      delegate_to: localhost
+    - name: Get failed in block module name
+      debug:
+        msg: "failed module is *{{ ansible_failed_task.name }}* when action *{{ ansible_failed_task.action }}*"
+    - name: save negative deploy result
+      lineinfile:
+        line: "{{ somebase.fbddir}}-{{ inventory_hostname }}-{{ host }}-deploy FAIL"
+        dest: "../deploy_result-{{ commit }}.txt"
+        insertafter: EOF
+      delegate_to: localhost
+    - name: save negative ansible result
+      lineinfile:
+        line: "{{ ansible_failed_task.name }}-{{ ansible_failed_task.action }}-{{ inventory_hostname }}"
+        dest: "../ansible_result-{{ commit }}.txt"
+        insertafter: EOF
+      delegate_to: localhost        
+    - name: try to get fail logs from install (may be absent)/delete distrib folder
+      include_tasks: getlogs.yml
+    - fail:
+        msg: "Fail the failed stage *{{ ansible_failed_task.name }}*"
+
+  always:
+    - name: Delete /tmp/distrib_dir/tempdistrib folder (always when success/fail)
+      file:
+        state: absent
+        path: "{{ tempdistrib.path }}/" 
+    - name: Delete /tmp/distrib_dir/install_logs zip file 
+      file:
+        state: absent
+        path: "{{ somebase.distrib_dir }}/install_logs_{{ commit }}_{{ host2 }}.zip"
+
+#- name: Include vars
+#  include_vars:
+#    file: "{{ host }}.yml"
+#
+##- name: nokey
+##  raw: export ANSIBLE_HOST_KEY_CHECKING=false
+#
+#- name: mkdir
+#  raw: mkdir -p {{ somebase.work_dir }}
+#
+#- name: mklogdir
+#  raw: mkdir -p {{ somebase.log_dir }}
+#
+#- name: get installer
+#  raw: if [ ! -e {{ somebase.work_dir }}/FBDloader.sh ];then curl {{ nexus.repo_url }}{{ nexus.installer_path }} --output {{ somebase.work_dir }}/builder.tar -s; tar -xvf {{ somebase.work_dir }}/builder.tar -C {{ somebase.work_dir }}; mv {{ somebase.work_dir }}/builder/* {{ somebase.work_dir }}; chmod +x {{ somebase.work_dir }}/FBDloader.sh; chmod +x {{ somebase.work_dir }}/FBDloader.pl; fi
+#
+#- name: run shell
+#  raw:  "{{ somebase.work_dir }}/FBDloader.pl not_used not_used {{ somebase.distrib_dir }}/Supply {{ somebase.fbddir }} {{ somebase.log_dir }}"

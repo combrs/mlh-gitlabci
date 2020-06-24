@@ -1,0 +1,39 @@
+- name: print log files search path
+  debug:
+    msg: "search *.log in {{ tempdistrib.path }}/logs/"
+- name: Find logs if it is created by installer
+  find:
+    paths: "{{ tempdistrib.path }}/logs/"
+    patterns: '*.log'
+  register: logfiles
+- name: log files length
+  debug:
+    msg: "found {{ logfiles.files|length }} log files"
+- name: Fail if no log files here
+  fail:
+    msg: "No log files found to zip logs"
+  when: logfiles.files|length == 0
+- name: Add server address to log files to distinguish it later
+  lineinfile:
+    line: "Log from server: {{ host2 }}"
+    dest: "{{ item.path }}"
+    insertafter: EOF
+  with_items: "{{ logfiles.files }}"         
+- name: Save install logs from tmp to base dir on remote server
+  copy:
+    src: "{{ tempdistrib.path }}/logs/"
+    dest: "{{ somebase.fbddir }}/logs-inst"
+    remote_src: True
+  with_items: "{{ logfiles.files }}" 
+- name: Zip logs
+  archive:
+    path: "{{ tempdistrib.path }}/logs/"
+    dest: "{{ somebase.distrib_dir }}/install_logs_{{ commit }}_{{ host2 }}.zip"
+    format: zip
+#    remove: yes
+- name: Get logs
+  fetch:
+    src: "{{ somebase.distrib_dir }}/install_logs_{{ commit }}_{{ host2 }}.zip"
+    dest: "{{ workdir }}/install_logs_{{ commit }}_{{ host2 }}.zip"
+    flat: yes
+

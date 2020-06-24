@@ -1,0 +1,25 @@
+---
+- name: Include vars
+  include_vars:
+    file: "{{ host }}.yml"
+
+- name: make folder
+  file:
+    dest: "{{ workdir }}/install_logs"
+    state: directory
+
+- name: copy to remote
+  raw: sshpass -p "{{ somebase.passw }}" scp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -r "{{ somebase.user }}"@"{{ host }}":"{{ somebase.log_dir }}" "{{ workdir }}/install_logs"
+#
+#- name: analyze logs
+#  shell: python analyzer.py
+
+- name: archive logs
+  archive:
+    path: "{{ workdir }}/install_logs"
+    dest: "{{ workdir }}/install_logs.zip"
+    format: zip
+    remove: yes
+
+- name: rm dir
+  raw: sshpass -p "{{ somebase.passw }}" ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null "{{ somebase.user }}"@"{{ host }}" "rm -rf {{ somebase.distrib_dir }}"

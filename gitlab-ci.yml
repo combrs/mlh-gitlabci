@@ -1,0 +1,25 @@
+stages:
+  - Check_supply
+  - Download_targz
+  - Download_supply
+  - Dependency_check
+  - Deploy
+  - Deploy_check
+  - Auto_testing
+  - Upload
+  - Notification
+  - Delay_Notification
+  - Error_notification
+  
+
+include:
+  - '/yml/.checksupply.yml'
+  - '/yml/.loadv3.yml'
+  - '/yml/.checkbeforeinstall.yml'
+  - '/yml/.deploy.yml'
+  - '/yml/.checkafterinstall.yml'
+  - '/yml/.test.yml'
+  - '/yml/.uploadv3.yml'
+  - '/yml/.mailv3.yml'
+  - '/yml/.delaymailv3.yml'
+  - '/yml/.errormailv3.yml'

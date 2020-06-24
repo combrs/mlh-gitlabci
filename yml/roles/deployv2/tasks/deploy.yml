@@ -1,0 +1,107 @@
+---
+- name: Check if distrib folder already exists
+  stat:
+    path: "{{ somebase.distrib_dir }}"
+  register: distribdir
+- name: Make distrib folder
+  file:
+    path: "{{ somebase.distrib_dir }}"
+    state: directory
+  when: distribdir.stat.exists == False   
+- name: Make temp folder inside distrib folder
+  tempfile:
+    path: "{{ somebase.distrib_dir }}"
+    prefix: "somebase-"
+    suffix: "-{{ commit }}"
+    state: directory
+  register: tempdistrib  
+- name: Make installer log folder
+  file:
+    path: "{{ tempdistrib.path }}/logs/"
+    state: directory  
+
+- name: Check if installer exist
+  stat:
+    path: "{{ somebase.installer }}"
+  register: installer
+
+- name: Make work folder, get installer, untar it
+  block:
+    - name: create builder/ dir for installer  
+      file:
+        dest: "{{ somebase.work_dir }}/builder"
+        state: directory
+ 
+    - name: Get installer
+      get_url:
+        url: "{{ nexus.repo_url }}{{ nexus.installer_path }}"
+        dest: "{{ somebase.work_dir }}/builder.tar"
+        force: no
+###   force = no tells that no download if file exists, and do it if not (default?)  
+
+    - name: Utar installer
+      unarchive:
+        src: "{{ somebase.work_dir }}/builder.tar"
+        dest: "{{ somebase.work_dir }}"
+        remote_src: yes
+##        mode: 01777
+    - name: Make installer executable
+      file:
+        path: "{{ somebase.installer }}"
+        mode: u=rwx,g=rx,o=rx
+    - name: Find shell script files in installer dir.
+      find:
+        paths: "{{ somebase.work_dir }}/builder"
+        patterns: "*.sh"
+      register: files_to_change
+    - name: Make found shell scripts executable
+      file:
+        path: "{{ item.path }}"
+        mode: u=rwx,g=rx,o=rx
+      with_items: "{{ files_to_change.files }}"
+  when: installer.stat.exists == False
+
+- name: Set TBXFIX=0 before try to install (to clear previous errors)
+  shell : "echo 'S $P(^TBXFIX,\"|\",4)=0' | ./dm 2>/dev/null | sed  's/GTM>//g'"
+  args:
+    chdir: "{{ somebase.fbddir }}"
+- name: Check TBXFIX set result var
+  shell : "echo 'W $P(^TBXFIX,\"|\",4)' | ./dm 2>/dev/null | sed  's/GTM>//g'| grep -v ^$"
+  args:
+    chdir: "{{ somebase.fbddir }}"
+  register: dmstatus    
+- debug:
+    msg: "TBXFIX after set is {{ dmstatus.stdout }}"
+- name: Fail pipeline if set before install not resulted with TBXFIX=0
+  fail:
+    msg: "TBXFIX before install cannot set =0"
+  when: dmstatus.stdout != "0"
+
+- name: copy supply targz archive to dest install host
+  copy:
+    src: "{{ workdir }}/ST_{{ commit }}.tar.gz"
+    dest: "{{ tempdistrib.path }}" 
+## copy create dest dir if it ends with /    
+
+- name: Install
+  command:
+    argv:
+      - "{{ somebase.installer }}"
+      - not_used
+      - not_used
+      - "{{ tempdistrib.path }}"
+      - "{{ somebase.fbddir }}"
+      - "{{ tempdistrib.path }}/logs"
+
+- name: Check TBXFIX install result var
+  shell : "echo 'W $P(^TBXFIX,\"|\",4)' | ./dm 2>/dev/null | sed  's/GTM>//g'| grep -v ^$"
+  args:
+    chdir: "{{ somebase.fbddir }}"
+  register: dmstatus
+- debug:
+    msg: "TBXFIX is {{ dmstatus.stdout }}"
+- name: Fail pipeline if install not ended with TBXFIX=0
+  fail:
+    msg: "TBXFIX shows that installer was failed, value not 0"
+  when: dmstatus.stdout != "0"
+      

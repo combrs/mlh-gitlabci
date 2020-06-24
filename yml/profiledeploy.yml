@@ -1,0 +1,9 @@
+---
+- hosts: "{{ host }}"
+  vars_files:
+    - ../inventories/group_vars/{{ host }}.yml
+  remote_user: "{{ somebase.user }}"
+  gather_facts: no
+  become: no
+  roles:
+    - deployv2
