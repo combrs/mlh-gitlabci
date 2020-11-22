@@ -1,0 +1,39 @@
+Notification:
+  stage: Notification
+  tags:
+    - deb
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - web
+    - triggers
+  dependencies:
+    - Search_issueformlh
+    - Deploy
+    - Deploy_check
+    - Auto_testing
+    - check_targz
+    - Down_rest_pack
+  script:
+##  unzip docs/readme to copy after genformail
+##    - unzip FP_$COMMIT.zip
+## generate standard mail about supply for send to jira-it
+    - ./scripts/gen_json_from_readme.sh genformail robot
+    - ./scripts/checksupply.sh checkdatajson
+    - ./scripts/send_notif.sh sendmailjsonfile robot
+## generate mail with additional info about supply for send to humans    
+    - ./scripts/gen_json_from_readme.sh genformail 
+    - ./scripts/send_notif.sh sendmailjsonfile 
+##    - cp -f Docs/$COMMIT.txt $CI_PROJECT_DIR
+    - ./scripts/gen_json_from_readme.sh genforjiraotr 
+    - ./scripts/gen_json_from_readme.sh genforjirawarn 
+    - ./scripts/send_notif.sh sendmailjirawarnfile 
+  artifacts:
+    paths:
+      - $CI_JOB_NAME.stderr
+      - "*.unsent.*"
+    when: always  
+    expire_in: 4 week  
+    

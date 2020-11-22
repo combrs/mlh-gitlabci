@@ -1,0 +1,25 @@
+Error_notification:
+  stage: Error_notification
+  tags:
+    - deb 
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - web
+    - triggers
+  script:
+    - ./scripts/gen_json_from_readme.sh genforjiraotr failed
+    - ./scripts/send_notif.sh sendjiraotrcomment 
+    - ./scripts/gen_json_from_readme.sh genforpipelineerrormail
+    - ./scripts/send_notif.sh sendmailjsonfile 
+    - ./scripts/send_notif.sh sendattestwarnfile 
+    - ./scripts/gen_json_from_readme.sh genforjirawarn
+    - ./scripts/send_notif.sh sendmailjirawarnfile 
+    - ./scripts/send_notif.sh sendnotiferrs
+  artifacts:
+    paths:    
+      - $CI_JOB_NAME.stderr
+    when: always
+  when: on_failure  

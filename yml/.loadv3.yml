@@ -1,0 +1,74 @@
+Down_targz:
+  stage: Download_targz
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies:
+    - Search_nexus
+  script:
+    - ./scripts/nexus-do.sh nexusdownload targz 
+  artifacts:
+    when: always
+    paths:
+      - $CI_JOB_NAME.stderr
+      - FP_$COMMIT.tar.gz
+      - FP_$COMMIT-2.tar.gz
+    expire_in: 1 week
+
+check_targz:
+  stage: Download_supply
+  tags:
+     - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies:
+    - Down_targz
+    - Check_input
+  script:
+    - ./scripts/checksupply.sh checksupplytargz
+  artifacts:
+    when: always
+    paths:
+      - FP_$COMMIT-reenc.zip
+      - $CI_JOB_NAME.stderr
+      - CR_contents.txt
+      - cpagechk.txt
+    expire_in: 1 week
+    
+Down_rest_pack:
+  stage: Download_supply
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies:
+    - Check_input
+    - Search_nexus
+    - Down_targz
+  script:
+    - ./scripts/nexus-do.sh nexusdownload 
+  artifacts:
+    when: always
+    paths:
+      - $CI_JOB_NAME.stderr
+      - $COMMIT-commiter.info
+      - $CI_PROJECT_DIR/*.zip
+      - $CI_PROJECT_DIR/*.docx
+      - $CI_PROJECT_DIR/*.doc
+      - $CI_PROJECT_DIR/*.sh
+      - $CI_PROJECT_DIR/*.txt
+    expire_in: 1 week
+    

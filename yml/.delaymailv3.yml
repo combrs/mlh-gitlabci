@@ -1,0 +1,26 @@
+.Delay_Notification:
+  stage: Delay_Notification
+  tags:
+    - deb
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - web
+    - triggers
+  dependencies: 
+    - Search_issueformlh
+    - Notification
+  script:
+    - ./scripts/send_notif_delayed.sh 
+    - ./scripts/send_notif.sh sendnotiferrs 
+  when: delayed
+  start_in: '5'  
+  artifacts:
+    paths:
+      - $CI_JOB_NAME.stderr
+    when: always  
+    expire_in: 4 week  
+    
+

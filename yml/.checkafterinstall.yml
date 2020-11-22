@@ -1,0 +1,24 @@
+Deploy_check:
+  stage: Deploy_check
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies:
+    - Check_input
+    - Search_issueformlh
+    - Down_targz
+    - Deploy    
+  script:
+    - ./scripts/checkafterinstall.sh
+  artifacts:
+    paths:
+      - $CI_JOB_NAME.stderr
+      - $CI_PROJECT_DIR/install_logs_$COMMIT.zip
+      - $CI_PROJECT_DIR/check*.txt
+    when: always
+    expire_in: 4 week

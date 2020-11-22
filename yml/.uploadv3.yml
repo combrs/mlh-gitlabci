@@ -1,0 +1,19 @@
+Upload:
+  stage: Upload
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies: 
+    - Down_rest_pack
+  script:
+    - ./scripts/checksupply.sh nexusexist distrib
+    - ./scripts/nexus-do.sh nexusupload supply
+  artifacts:
+    paths:
+      - $CI_JOB_NAME.stderr
+    expire_in: 1 week

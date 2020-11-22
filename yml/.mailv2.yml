@@ -1,0 +1,70 @@
+Notification:
+  stage: Notification
+  tags:
+    - deb
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - web
+    - triggers
+  dependencies: 
+    - Download_supply
+    - Deploy 
+  script:
+    - RELNOTESDIR=$CI_PROJECT_DIR
+    - JIRA_ID=`grep 'JIRA ID' $RELNOTESDIR/$COMMIT.txt | awk -F':' '{print $2}' | tr "," " "`
+    - ITT=`for i in  $JIRA_ID; do echo $i|awk -F'\r' '{print"\""$1"\","}'; done`
+    - ISS=`echo ${ITT%?}`
+    - DATE=`date`
+    - SUBJ=`grep Title $RELNOTESDIR/$COMMIT.txt | awk -F':' '{print $2}'`
+    - SUBJECT="$COMMIT "`echo $SUBJ |tr -d '#\r\n'`
+    - unzip FP_$COMMIT.zip
+    - cd $CI_PROJECT_DIR/Supply
+    - TAR=`ls | grep -e tar.gz || echo exp`
+    - if [[ $TAR != "exp" ]]; then tar -xf FP_$COMMIT.tar.gz; cp $CI_PROJECT_DIR/Supply/FP_$COMMIT/CR_contents.txt $CI_PROJECT_DIR/CR_contents.txt; cd $CI_PROJECT_DIR ;fi
+    - echo "" >> $RELNOTESDIR/$COMMIT.txt
+    - echo -e "Scope of delivery:\r\n" >> $RELNOTESDIR/$COMMIT.txt
+    - echo -e "-------------------------------\r\n" >> $RELNOTESDIR/$COMMIT.txt
+    - if [ -f "CR_contents.txt" ]; then cat CR_contents.txt |grep -v "#"| while read -r line; do echo $line|awk -F'|' '{print "\r\n"$1"|"$2"|"$3}'; done >> $RELNOTESDIR/$COMMIT.txt ; fi
+    - BODY=`grep -vEi 'Title|JIRA' $RELNOTESDIR/$COMMIT.txt | tr '\r\n' '\n'| sed 's/$/\r/' | base64 -w 0`
+    - echo $SUBJECT
+    - B2=`echo $BODY|sed 's/[[:space:]]//g'`
+    - URL="/release/$COMMIT/FP_$COMMIT.zip"
+    - echo '{"body":"Delivery checks passed. \\\\\\\\\\\\\\\\ FixPack sent to deployment team on' > jira.json
+    - echo "$DATE \\\\\\\\\\\\\\\\">> jira.json
+    - echo "\\\\\\\\\\\\\\\\" >> jira.json
+    - B3=`echo $B2|base64 -d`
+    - IFS=$'\r\n'
+    - B4=`for F in $B3; do echo "$F\\\\\\\\\\\\\\\\"; done;`
+    - echo $B4 >> jira.json
+    - echo '"}' >> jira.json
+    - cat jira.json
+    - if [ $P_SEND_NOTIFICATION == "true" ]; then
+        cat mail/email.json.tmpl1 | sed s#{subject}#"$SUBJECT"#g | sed s#{mailto}#"$MAIL_LIST"#g > mail.txt;
+        JIRAIT_BODYCODE=`curl -s -w "%{http_code}" -u $JIRA_USER:$JIRA_PASS -X POST --data @jira.json -H "Content-Type:application/json" $JIRA_URL/$COMMIT/comment -x $mlh_PROXY_URL:$mlh_PROXY_PORT`;
+        JIRAIT_BODY=${JIRAIT_BODYCODE::-3};
+        JIRAIT_CODE=$(echo $JIRAIT_BODYCODE | tail -c 4); 
+        echo JIRAIT_BODY $JIRAIT_BODY; 
+        echo JIRAIT_CODE $JIRAIT_CODE;
+      fi
+    - if [ ! $P_SEND_NOTIFICATION == "true" ]; then
+      cat mail/email.json.tmpl1 | sed s#{subject}#"$SUBJECT"#g | sed s#{mailto}#"$DEBUG_MAIL"#g > mail.txt;
+      fi
+    - echo $BODY >> mail.txt
+    - echo '"' >> mail.txt
+    - rm jira.json
+    - cat mail/data.json | sed s#{COMMIT}#$COMMIT#g | sed s#{URL}#$URL#g | sed s#{ISS}#$ISS#g | sed s#{K}#"K3"#g > data.json;
+    - chmod +x scripts/attacher.sh
+    - ./scripts/attacher.sh $CI_PROJECT_DIR
+    - echo '}' >> mail.txt
+    - curl -s -w "%{http_code}" -d "@mail.txt" -H "Content-Type:application/json" -X POST http://10.203.92.186:9080
+    - ./scripts/jira-api-search-do.sh updateresulttable $COMMIT deploy_result-$COMMIT.txt
+    - if [[ "$JIRAIT_CODE" -eq "201" ]]; then
+        ./scripts/jira-api-search-do.sh changestatus $COMMIT;
+      fi  
+  artifacts:
+    paths:
+      - deploy_result-$COMMIT.txt
+    expire_in: 4 week 

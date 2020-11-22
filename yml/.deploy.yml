@@ -1,0 +1,23 @@
+Deploy:
+  stage: Deploy
+  tags:
+    - deployer
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  dependencies:
+    - Down_targz
+  script:
+    - ./scripts/deploy.sh
+  artifacts:
+    when: always
+    paths:
+      - "$CI_PROJECT_DIR/install_logs_$COMMIT_*.zip"
+      - deploy_result-$COMMIT.txt
+      - ansible_result-$COMMIT.txt
+    expire_in: 4 week
+    
+  

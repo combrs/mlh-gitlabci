@@ -1,0 +1,74 @@
+Check_input:
+  stage: Check_supply
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  script:
+    - ./scripts/checksupply.sh nexusexist readme
+    - ./scripts/checksupply.sh parsereadme
+    - ./scripts/checksupply.sh checkcommit
+    - ./scripts/checksupply.sh checkrelease
+    - ./scripts/checksupply.sh checkdependencies
+    - ./scripts/checksupply.sh nexusexist distrib
+    - ./scripts/checksupply.sh hostexist
+    - ./scripts/checksupply.sh checkjiraids
+  artifacts:
+    when: always
+    paths:
+      - $CI_PROJECT_DIR/$CI_JOB_NAME.stderr
+      - $COMMIT.txt
+      - commheader.txt
+    expire_in: 4 days
+
+Search_nexus:
+  stage: Check_supply
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  script:
+    - ./scripts/nexus-do.sh nexussearch
+  artifacts:
+    when: always
+    paths:
+      - $CI_JOB_NAME.stderr
+      - nexussearchres.json
+      - readmesexcess.json
+    expire_in: 4 days
+
+Search_issueformlh:
+  stage: Check_supply
+  tags:
+    - rhel
+  except:
+    - pushes
+    - schedules
+  only:
+    - triggers
+    - web
+  script:
+    - ./scripts/checksupply.sh nexusexist readme
+    - ./scripts/checksupply.sh parsereadme
+    - ./scripts/check_jiradso.sh searchissueformlh
+    - ./scripts/check_jiradso.sh checkissue
+  artifacts:
+    when: always
+    paths:
+      - $COMMIT.txt
+      - commheader.txt
+      - $CI_JOB_NAME.stderr
+      - jiradso.chkres
+      - searchissue-key.txt
+      - searchissue-id.txt
+      - searchissue.json
+      - isstatus.txt
+    expire_in: 4 days
